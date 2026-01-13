@@ -14,7 +14,11 @@ use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::handlers::{self, *};
+use super::handlers::{
+    self, AttachmentResponse, CaptureRequest, CreateNoteRequest, ErrorResponse, HealthResponse,
+    ListResponse, NoteResponse, SearchResponse, StatsResponse, TagsResponse, UpdateNoteRequest,
+    UploadAttachmentRequest,
+};
 use crate::embed::{Chunker, Embedder};
 use crate::mcp::NotidiumServer;
 use crate::store::NoteStore;
@@ -38,6 +42,7 @@ struct Asset;
         (name = "notes", description = "Note management"),
         (name = "search", description = "Search operations"),
         (name = "metadata", description = "Tags and statistics"),
+        (name = "attachments", description = "Attachment management"),
         (name = "health", description = "Health checks")
     ),
     paths(
@@ -53,6 +58,7 @@ struct Asset;
         handlers::quick_capture,
         handlers::list_tags,
         handlers::get_stats,
+        handlers::upload_attachment,
     ),
     components(schemas(
         NoteMeta,
@@ -67,6 +73,8 @@ struct Asset;
         CreateNoteRequest,
         UpdateNoteRequest,
         CaptureRequest,
+        UploadAttachmentRequest,
+        AttachmentResponse,
     ))
 )]
 pub struct ApiDoc;
@@ -105,6 +113,7 @@ pub struct AppState {
     pub semantic: Arc<tokio::sync::RwLock<SemanticSearch>>,
     pub embedder: Arc<Embedder>,
     pub chunker: Arc<Chunker>,
+    pub attachments_path: std::path::PathBuf,
 }
 
 /// Create the API router
@@ -131,6 +140,10 @@ pub fn create_router(state: AppState) -> Router {
 
         // Quick actions
         .route("/api/capture", post(handlers::quick_capture))
+
+        // Attachments
+        .route("/api/attachments", post(handlers::upload_attachment))
+        .route("/api/attachments/{filename}", get(handlers::get_attachment))
 
         // Metadata
         .route("/api/tags", get(handlers::list_tags))
@@ -198,6 +211,10 @@ pub fn create_router_with_mcp(state: AppState) -> Router {
 
         // Quick actions
         .route("/api/capture", post(handlers::quick_capture))
+
+        // Attachments
+        .route("/api/attachments", post(handlers::upload_attachment))
+        .route("/api/attachments/{filename}", get(handlers::get_attachment))
 
         // Metadata
         .route("/api/tags", get(handlers::list_tags))

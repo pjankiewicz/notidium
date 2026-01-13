@@ -18,6 +18,7 @@ import {
 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { useNote, useUpdateNote, useDeleteNote, useCreateNote } from '@/hooks/useNotes'
+import { useUploadAttachment, blobToBase64 } from '@/hooks/useUploadAttachment'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { MarkdownPreview } from '@/components/ui/MarkdownPreview'
 import { TagInput } from '@/components/ui/TagInput'
@@ -37,6 +38,7 @@ export function NotePage() {
   const createNote = useCreateNote()
   const updateNote = useUpdateNote()
   const deleteNote = useDeleteNote()
+  const uploadAttachment = useUploadAttachment()
 
   // Persisted settings
   const { viewMode, setViewMode } = useSettingsStore()
@@ -251,6 +253,67 @@ export function NotePage() {
       }
     }
   }
+
+  // Track image upload state
+  const [isUploading, setIsUploading] = useState(false)
+
+  // Handle paste event for images
+  const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    for (const item of items) {
+      // Check if it's an image (item.type may be empty in some browsers/scenarios)
+      if (item.type.startsWith('image/') || item.kind === 'file') {
+        const file = item.getAsFile()
+        if (!file) continue
+
+        // Skip non-image files
+        const mimeType = file.type || item.type
+        if (!mimeType.startsWith('image/') && !mimeType) {
+          // If no mime type, the backend will detect from magic bytes
+        }
+
+        e.preventDefault() // Prevent default paste behavior for images
+
+        setIsUploading(true)
+        try {
+          const base64Data = await blobToBase64(file)
+          const result = await uploadAttachment.mutateAsync({
+            data: base64Data,
+            mime_type: mimeType || '', // Backend will detect from magic bytes if empty
+          })
+
+          // Insert markdown at cursor position
+          const textarea = textareaRef.current
+          if (textarea) {
+            const { selectionStart, selectionEnd, value } = textarea
+            const before = value.substring(0, selectionStart)
+            const after = value.substring(selectionEnd)
+            const newContent = before + result.markdown + after
+            setContent(newContent)
+
+            // Move cursor after the inserted markdown
+            requestAnimationFrame(() => {
+              textarea.selectionStart = textarea.selectionEnd = selectionStart + result.markdown.length
+              textarea.focus()
+            })
+          } else {
+            // If no textarea ref, just append to content
+            setContent(prev => prev + '\n' + result.markdown)
+          }
+
+          toast.success('Image uploaded')
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Failed to upload image'
+          toast.error(message)
+        } finally {
+          setIsUploading(false)
+        }
+        return // Only handle the first image
+      }
+    }
+  }, [uploadAttachment])
 
   // Find in note
   const findInNote = useCallback(() => {
@@ -524,10 +587,12 @@ export function NotePage() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={handleTextareaKeyDown}
+              onPaste={handlePaste}
               className="w-full flex-1 min-h-[400px] bg-bg-surface border border-border rounded-lg p-4
                        text-text-primary font-mono text-sm resize-none
                        focus:outline-none focus:border-border-focus"
               placeholder="Write your note in Markdown..."
+              disabled={isUploading}
             />
           </div>
         )}
@@ -559,6 +624,7 @@ export function NotePage() {
           {lastSaved && <span>Last saved {lastSaved.toLocaleTimeString()}</span>}
           {isDirty && !isSaving && <span className="text-warning">Unsaved changes</span>}
           {isSaving && <span className="text-primary">Saving...</span>}
+          {isUploading && <span className="text-primary">Uploading image...</span>}
           <span className="text-text-muted">{content.length} characters</span>
           <kbd className="kbd">⌘S</kbd>
         </div>

@@ -4485,6 +4485,7 @@ dependencies = [
  "arrow-array 54.2.1",
  "async-trait",
  "axum",
+ "base64 0.22.1",
  "chrono",
  "clap",
  "dirs 5.0.1",

@@ -408,6 +408,7 @@ async fn initialize_state(config: &Config) -> anyhow::Result<AppState> {
         semantic: Arc::new(RwLock::new(semantic)),
         embedder,
         chunker,
+        attachments_path: config.attachments_path(),
     })
 }
 
