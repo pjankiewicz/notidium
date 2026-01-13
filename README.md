@@ -24,7 +24,7 @@ A developer-focused, local-first note-taking application with semantic search an
 
 ```bash
 # Clone and build
-git clone https://github.com/your-username/notidium.git
+git clone https://github.com/zenide/notidium
 cd notidium
 cargo build --release
 

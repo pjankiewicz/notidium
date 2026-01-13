@@ -1,0 +1,147 @@
+/* Import highlight.js dark theme - must be before tailwind */
+@import 'highlight.js/styles/github-dark.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg-base text-text-primary antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  code, pre {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-bg-base;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-muted;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-150;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-bg-base hover:bg-primary-hover;
+  }
+
+  .btn-secondary {
+    @apply bg-bg-elevated text-text-primary hover:bg-bg-hover border border-border;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary hover:text-text-primary hover:bg-bg-hover;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 bg-bg-surface border border-border rounded-lg
+           text-text-primary placeholder:text-text-muted
+           focus:outline-none focus:border-border-focus focus:ring-1 focus:ring-border-focus
+           transition-colors duration-150;
+  }
+
+  .card {
+    @apply bg-bg-surface border border-border rounded-lg;
+  }
+
+  .kbd {
+    @apply inline-flex items-center justify-center px-1.5 py-0.5
+           text-xs font-mono text-text-secondary bg-bg-elevated
+           border border-border rounded;
+  }
+}
+
+/* Override highlight.js styles for better integration */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Markdown prose styles */
+.prose {
+  --tw-prose-body: theme('colors.text.primary');
+  --tw-prose-headings: theme('colors.text.primary');
+  --tw-prose-lead: theme('colors.text.secondary');
+  --tw-prose-links: theme('colors.primary.DEFAULT');
+  --tw-prose-bold: theme('colors.text.primary');
+  --tw-prose-counters: theme('colors.text.secondary');
+  --tw-prose-bullets: theme('colors.text.secondary');
+  --tw-prose-hr: theme('colors.border.DEFAULT');
+  --tw-prose-quotes: theme('colors.text.secondary');
+  --tw-prose-quote-borders: theme('colors.primary.DEFAULT');
+  --tw-prose-captions: theme('colors.text.muted');
+  --tw-prose-code: theme('colors.primary.DEFAULT');
+  --tw-prose-pre-code: theme('colors.text.primary');
+  --tw-prose-pre-bg: theme('colors.bg.elevated');
+  --tw-prose-th-borders: theme('colors.border.DEFAULT');
+  --tw-prose-td-borders: theme('colors.border.DEFAULT');
+}
+
+/* Task list styles (for GFM checkboxes) */
+.prose ul.contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.prose ul.contains-task-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.prose ul.contains-task-list input[type="checkbox"] {
+  margin-top: 0.25rem;
+  accent-color: theme('colors.primary.DEFAULT');
+}
+
+/* Sonner toast styles */
+[data-sonner-toaster] {
+  --normal-bg: theme('colors.bg.surface');
+  --normal-border: theme('colors.border.DEFAULT');
+  --normal-text: theme('colors.text.primary');
+  --success-bg: theme('colors.bg.surface');
+  --success-border: theme('colors.success');
+  --success-text: theme('colors.success');
+  --error-bg: theme('colors.bg.surface');
+  --error-border: theme('colors.error');
+  --error-text: theme('colors.error');
+}
+
+/* Radix dialog animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes zoomOut {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+}
