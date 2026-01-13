@@ -46,7 +46,7 @@ export function TagInput({ tags, onChange, readOnly = false, className }: TagInp
           <Link
             key={tag}
             to={`/tags/${tag}`}
-            className="px-2 py-1 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm transition-colors"
+            className="px-2 py-1 bg-primary-muted text-primary hover:opacity-80 rounded-lg text-sm transition-colors"
           >
             {tag}
           </Link>
@@ -63,7 +63,7 @@ export function TagInput({ tags, onChange, readOnly = false, className }: TagInp
       {tags.map((tag) => (
         <span
           key={tag}
-          className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-lg text-sm"
+          className="inline-flex items-center gap-1 px-2 py-1 bg-primary-muted text-primary rounded-lg text-sm"
         >
           {tag}
           <button
@@ -116,8 +116,8 @@ export function TagBadge({ tag, onClick, onRemove, className }: TagBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-lg text-sm',
-        onClick && 'hover:bg-primary/20 cursor-pointer transition-colors',
+        'inline-flex items-center gap-1 px-2 py-1 bg-primary-muted text-primary rounded-lg text-sm',
+        onClick && 'hover:opacity-80 cursor-pointer transition-colors',
         className
       )}
     >

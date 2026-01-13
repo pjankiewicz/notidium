@@ -780,7 +780,7 @@ export function NotePage() {
               onClick={() => setShowSearch(prev => !prev)}
               className={cn(
                 'p-2 rounded-lg transition-colors',
-                showSearch ? 'text-primary bg-primary/10' : 'text-text-muted hover:text-text-secondary hover:bg-bg-hover'
+                showSearch ? 'text-primary bg-primary-muted' : 'text-text-muted hover:text-text-secondary hover:bg-bg-hover'
               )}
             >
               <IconSearch size={18} />

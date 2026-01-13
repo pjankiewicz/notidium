@@ -98,7 +98,7 @@ export function NotesPage() {
                         <button
                           key={t}
                           onClick={(e) => handleTagClick(e, t)}
-                          className="px-1.5 py-0.5 bg-primary/10 text-primary hover:bg-primary/20 rounded text-xs transition-colors"
+                          className="px-1.5 py-0.5 bg-primary-muted text-primary hover:opacity-80 rounded text-xs transition-colors"
                         >
                           {t}
                         </button>

@@ -7,8 +7,11 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconCommand,
+  IconSun,
+  IconMoon,
 } from '@tabler/icons-react'
 import { useUIStore } from '@/stores/uiStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { cn } from '@/utils/cn'
 
 const navItems = [
@@ -20,6 +23,7 @@ const navItems = [
 
 export function Sidebar() {
   const { sidebarOpen, toggleSidebar, setCommandPaletteOpen } = useUIStore()
+  const { theme, toggleTheme } = useSettingsStore()
 
   return (
     <aside
@@ -74,7 +78,7 @@ export function Sidebar() {
               cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
                 isActive
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-primary-muted text-primary'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
               )
             }
@@ -87,11 +91,23 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-border">
-        {sidebarOpen && (
-          <p className="text-xs text-text-muted">
-            v0.1.0
-          </p>
-        )}
+        <div className={cn(
+          'flex items-center',
+          sidebarOpen ? 'justify-between' : 'justify-center'
+        )}>
+          {sidebarOpen && (
+            <p className="text-xs text-text-muted">
+              v0.1.0
+            </p>
+          )}
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+          </button>
+        </div>
       </div>
     </aside>
   )

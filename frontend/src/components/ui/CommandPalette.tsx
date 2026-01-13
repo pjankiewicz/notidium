@@ -197,8 +197,8 @@ export function CommandPalette() {
                       navigate('/search')
                     })}
                     className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg cursor-pointer
-                              text-primary hover:bg-primary/10
-                              data-[selected=true]:bg-primary/10"
+                              text-primary hover:bg-primary-muted
+                              data-[selected=true]:bg-primary-muted"
                   >
                     <span className="text-sm">View all {searchResults.total} results</span>
                   </Command.Item>

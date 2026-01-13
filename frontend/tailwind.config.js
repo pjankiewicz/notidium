@@ -9,33 +9,33 @@ export default {
       colors: {
         // Primary - Deep Teal
         primary: {
-          DEFAULT: '#2dd4bf',
-          hover: '#5eead4',
-          muted: '#134e4a',
+          DEFAULT: 'var(--color-primary)',
+          hover: 'var(--color-primary-hover)',
+          muted: 'var(--color-primary-muted)',
         },
-        // Backgrounds - Rich dark with subtle blue undertone
+        // Backgrounds
         bg: {
-          base: '#0f0f14',
-          surface: '#1a1a24',
-          elevated: '#242430',
-          hover: '#2e2e3a',
+          base: 'var(--color-bg-base)',
+          surface: 'var(--color-bg-surface)',
+          elevated: 'var(--color-bg-elevated)',
+          hover: 'var(--color-bg-hover)',
         },
         // Text
         text: {
-          primary: '#f0f0f5',
-          secondary: '#9898a8',
-          muted: '#606070',
+          primary: 'var(--color-text-primary)',
+          secondary: 'var(--color-text-secondary)',
+          muted: 'var(--color-text-muted)',
         },
         // Accents
-        semantic: '#a78bfa',  // violet - semantic search
-        fulltext: '#38bdf8',  // sky - fulltext search
-        success: '#4ade80',
-        warning: '#fbbf24',
-        error: '#f87171',
+        semantic: 'var(--color-semantic)',
+        fulltext: 'var(--color-fulltext)',
+        success: 'var(--color-success)',
+        warning: 'var(--color-warning)',
+        error: 'var(--color-error)',
         // Borders
         border: {
-          DEFAULT: '#2e2e3a',
-          focus: '#2dd4bf',
+          DEFAULT: 'var(--color-border)',
+          focus: 'var(--color-border-focus)',
         },
       },
       fontFamily: {
