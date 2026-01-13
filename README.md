@@ -48,10 +48,10 @@ notidium index
 notidium search "hello"
 notidium search --semantic "greeting message"
 
-# Start the HTTP API server
+# Start the server (HTTP API + MCP + Web UI)
 notidium serve
 
-# Start the MCP server for Claude Desktop
+# Start MCP-only server for Claude Desktop (stdio mode)
 notidium mcp
 ```
 
@@ -60,9 +60,9 @@ notidium mcp
 | Command | Description |
 |---------|-------------|
 | `notidium init [path]` | Initialize a new vault |
-| `notidium serve [-p PORT]` | Start HTTP API server (default: 3939) |
-| `notidium mcp` | Start MCP server (stdio mode for Claude Desktop) |
-| `notidium mcp-http [-p PORT]` | Start MCP server (HTTP mode, default: 3940) |
+| `notidium serve [-p PORT]` | Start server with HTTP API, MCP, and Web UI (default: 3939) |
+| `notidium mcp` | Start MCP-only server (stdio mode for Claude Desktop) |
+| `notidium mcp-http [-p PORT]` | Start MCP-only server (HTTP mode, default: 3940) |
 | `notidium index [-f]` | Index all notes with full-text + embeddings |
 | `notidium search <query>` | Search notes (add `-s` for semantic) |
 | `notidium list [-l LIMIT] [-t TAG]` | List all notes |
@@ -99,6 +99,7 @@ Add to your `claude_desktop_config.json`:
 | `search_code` | Search code blocks with language filter |
 | `create_note` | Create a new note |
 | `update_note` | Replace note content |
+| `delete_note` | Delete a note (moves to trash) |
 | `append_to_note` | Append content to existing note |
 | `quick_capture` | Quick capture to inbox |
 | `get_stats` | Get knowledge base statistics |
@@ -109,18 +110,21 @@ Add to your `claude_desktop_config.json`:
 When running `notidium serve`, the following endpoints are available:
 
 ```
-GET  /health              Health check
-GET  /api/notes           List notes
-POST /api/notes           Create note
-GET  /api/notes/:id       Get note by ID
-PUT  /api/notes/:id       Update note
-DELETE /api/notes/:id     Delete note
-GET  /api/search          Full-text search (?q=query)
-GET  /api/search/semantic Semantic search (?q=query)
+GET  /health                 Health check
+GET  /api/notes              List notes
+POST /api/notes              Create note
+GET  /api/notes/:id          Get note by ID
+PUT  /api/notes/:id          Update note
+DELETE /api/notes/:id        Delete note
+GET  /api/search             Full-text search (?q=query)
+GET  /api/search/semantic    Semantic search (?q=query)
 GET  /api/notes/:id/related  Find related notes
-POST /api/capture         Quick capture
-GET  /api/tags            List all tags
-GET  /api/stats           Get statistics
+POST /api/capture            Quick capture
+GET  /api/tags               List all tags
+GET  /api/stats              Get statistics
+GET  /api/docs               Swagger UI
+GET  /api/openapi.json       OpenAPI spec
+POST /mcp                    MCP protocol endpoint
 ```
 
 ## Vault Structure
