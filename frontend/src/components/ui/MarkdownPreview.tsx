@@ -9,6 +9,15 @@ interface MarkdownPreviewProps {
   className?: string
 }
 
+// Helper to extract source line from node position
+function getSourceLine(node: { position?: { start?: { line?: number } } } | undefined): number | undefined {
+  return node?.position?.start?.line
+}
+
+function getSourceEndLine(node: { position?: { end?: { line?: number } } } | undefined): number | undefined {
+  return node?.position?.end?.line
+}
+
 export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
   return (
     <div className={cn('prose prose-invert max-w-none', className)}>
@@ -16,24 +25,69 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
-          // Custom renderers for better styling
-          h1: ({ children }) => (
-            <h1 className="text-2xl font-bold text-text-primary border-b border-border pb-2 mb-4">
+          // Custom renderers with source line tracking for scroll sync
+          h1: ({ children, node }) => (
+            <h1
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="text-2xl font-bold text-text-primary border-b border-border pb-2 mb-4"
+            >
               {children}
             </h1>
           ),
-          h2: ({ children }) => (
-            <h2 className="text-xl font-bold text-text-primary border-b border-border pb-1 mb-3 mt-6">
+          h2: ({ children, node }) => (
+            <h2
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="text-xl font-bold text-text-primary border-b border-border pb-1 mb-3 mt-6"
+            >
               {children}
             </h2>
           ),
-          h3: ({ children }) => (
-            <h3 className="text-lg font-semibold text-text-primary mb-2 mt-4">
+          h3: ({ children, node }) => (
+            <h3
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="text-lg font-semibold text-text-primary mb-2 mt-4"
+            >
               {children}
             </h3>
           ),
-          p: ({ children }) => (
-            <p className="text-text-primary leading-relaxed mb-4">{children}</p>
+          h4: ({ children, node }) => (
+            <h4
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="text-base font-semibold text-text-primary mb-2 mt-3"
+            >
+              {children}
+            </h4>
+          ),
+          h5: ({ children, node }) => (
+            <h5
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="text-sm font-semibold text-text-primary mb-1 mt-2"
+            >
+              {children}
+            </h5>
+          ),
+          h6: ({ children, node }) => (
+            <h6
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="text-sm font-medium text-text-secondary mb-1 mt-2"
+            >
+              {children}
+            </h6>
+          ),
+          p: ({ children, node }) => (
+            <p
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="text-text-primary leading-relaxed mb-4"
+            >
+              {children}
+            </p>
           ),
           a: ({ href, children }) => (
             <a
@@ -45,21 +99,33 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
               {children}
             </a>
           ),
-          ul: ({ children }) => (
-            <ul className="list-disc list-inside mb-4 space-y-1 text-text-primary">
+          ul: ({ children, node }) => (
+            <ul
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="list-disc list-inside mb-4 space-y-1 text-text-primary"
+            >
               {children}
             </ul>
           ),
-          ol: ({ children }) => (
-            <ol className="list-decimal list-inside mb-4 space-y-1 text-text-primary">
+          ol: ({ children, node }) => (
+            <ol
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="list-decimal list-inside mb-4 space-y-1 text-text-primary"
+            >
               {children}
             </ol>
           ),
           li: ({ children }) => (
             <li className="text-text-primary">{children}</li>
           ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-primary pl-4 italic text-text-secondary my-4">
+          blockquote: ({ children, node }) => (
+            <blockquote
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="border-l-4 border-primary pl-4 italic text-text-secondary my-4"
+            >
               {children}
             </blockquote>
           ),
@@ -81,11 +147,17 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
               </code>
             )
           },
-          pre: ({ children }) => (
-            <CodeBlock>{children}</CodeBlock>
+          pre: ({ children, node }) => (
+            <CodeBlock data-source-line={getSourceLine(node)} data-source-end-line={getSourceEndLine(node)}>
+              {children}
+            </CodeBlock>
           ),
-          table: ({ children }) => (
-            <div className="overflow-x-auto mb-4">
+          table: ({ children, node }) => (
+            <div
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="overflow-x-auto mb-4"
+            >
               <table className="min-w-full border border-border rounded-lg">
                 {children}
               </table>
@@ -101,9 +173,17 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
               {children}
             </td>
           ),
-          hr: () => <hr className="border-border my-6" />,
-          img: ({ src, alt }) => (
+          hr: ({ node }) => (
+            <hr
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
+              className="border-border my-6"
+            />
+          ),
+          img: ({ src, alt, node }) => (
             <img
+              data-source-line={getSourceLine(node)}
+              data-source-end-line={getSourceEndLine(node)}
               src={src}
               alt={alt}
               className="max-w-full rounded-lg border border-border"

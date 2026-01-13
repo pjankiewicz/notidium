@@ -57,6 +57,8 @@ export function NotePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
+  const isScrollSyncing = useRef(false)
 
   // Track which note we've initialized local state from
   const initializedNoteId = useRef<string | null>(null)
@@ -102,7 +104,6 @@ export function NotePage() {
   }, [isNewNote])
 
   // Auto-save debouncing
-  const [autoSaveTimer, setAutoSaveTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
@@ -121,7 +122,7 @@ export function NotePage() {
         })
         toast.success('Note created')
         navigate(`/notes/${result.id}`, { replace: true })
-      } catch (err) {
+      } catch {
         toast.error('Failed to create note')
       } finally {
         setIsSaving(false)
@@ -141,7 +142,7 @@ export function NotePage() {
         })
         setLastSaved(new Date())
         toast.success('Note saved')
-      } catch (err) {
+      } catch {
         toast.error('Failed to save note')
       } finally {
         setIsSaving(false)
@@ -150,23 +151,31 @@ export function NotePage() {
   }, [isNewNote, noteId, title, content, tags, isPinned, isArchived, createNote, updateNote, navigate])
 
   // Auto-save effect
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!isDirty || isNewNote) return
-
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer)
+    if (!isDirty || isNewNote) {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
+      return
     }
 
-    const timer = setTimeout(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
       save()
     }, 2000) // Auto-save after 2 seconds of inactivity
 
-    setAutoSaveTimer(timer)
-
     return () => {
-      if (timer) clearTimeout(timer)
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
     }
-  }, [title, content, tags, isPinned, isArchived]) // Intentionally not including save to avoid infinite loop
+  }, [title, content, tags, isPinned, isArchived, isDirty, isNewNote, save])
 
   const handleDelete = async () => {
     if (!noteId || isNewNote) return
@@ -175,7 +184,7 @@ export function NotePage() {
       await deleteNote.mutateAsync(noteId)
       toast.success('Note deleted')
       navigate('/notes')
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete note')
     }
     setDeleteDialogOpen(false)
@@ -189,7 +198,7 @@ export function NotePage() {
       setCopied(true)
       toast.success('Note copied to clipboard')
       setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
+    } catch {
       toast.error('Failed to copy note')
     }
   }
@@ -211,7 +220,7 @@ export function NotePage() {
         const afterSelection = value.substring(selectionEnd)
 
         // Remove 2 spaces or 1 tab from start of each line
-        const dedented = selectedLines.replace(/^(  |\t)/gm, '')
+        const dedented = selectedLines.replace(/^( {2}|\t)/gm, '')
         const removed = selectedLines.length - dedented.length
 
         const newContent = beforeSelection + dedented + afterSelection
@@ -256,6 +265,329 @@ export function NotePage() {
 
   // Track image upload state
   const [isUploading, setIsUploading] = useState(false)
+
+  // Synchronized scrolling for split mode
+  // Maps the top visible line in one pane to the other pane using Markdown AST source line ranges
+  // (data-source-line + data-source-end-line) so the relationship is non-linear.
+
+  const scrollSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const editorMirrorRef = useRef<HTMLDivElement | null>(null)
+  const editorMetricsRef = useRef<{
+    content: string
+    width: number
+    lineTops: number[]
+    lineHeights: number[]
+  } | null>(null)
+
+  useEffect(() => {
+    return () => {
+      editorMirrorRef.current?.remove()
+      editorMirrorRef.current = null
+      editorMetricsRef.current = null
+    }
+  }, [])
+
+  type PreviewBlockRange = {
+    startLine: number
+    endLine: number
+    top: number
+    bottom: number
+  }
+
+  // Get all block elements with their source line ranges and positions
+  const getPreviewBlockRanges = useCallback((): PreviewBlockRange[] => {
+    const preview = previewRef.current
+    if (!preview) return []
+
+    const elements = Array.from(preview.querySelectorAll<HTMLElement>('[data-source-line][data-source-end-line]'))
+    if (elements.length === 0) return []
+
+    const previewPaddingTop = parseFloat(getComputedStyle(preview).paddingTop) || 0
+    const previewRect = preview.getBoundingClientRect()
+
+    const ranges = elements
+      .map(el => {
+        const startLine = parseInt(el.getAttribute('data-source-line') || '0', 10)
+        const endLineRaw = parseInt(el.getAttribute('data-source-end-line') || '0', 10)
+        if (startLine <= 0 || endLineRaw <= 0) return null
+        const endLine = Math.max(startLine, endLineRaw)
+
+        const elRect = el.getBoundingClientRect()
+        const top = elRect.top - previewRect.top + preview.scrollTop - previewPaddingTop
+        const height = elRect.height
+
+        return {
+          startLine,
+          endLine,
+          top,
+          bottom: top + height,
+        }
+      })
+      .filter((r): r is PreviewBlockRange => r !== null)
+      .sort((a, b) => a.startLine - b.startLine || a.top - b.top)
+
+    return ranges
+  }, [])
+
+  // Calculate editor line height
+  const getLineHeight = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return 21
+
+    // Create a temporary element to measure actual line height
+    const temp = document.createElement('div')
+    temp.style.cssText = window.getComputedStyle(textarea).cssText
+    temp.style.height = 'auto'
+    temp.style.position = 'absolute'
+    temp.style.visibility = 'hidden'
+    temp.style.whiteSpace = 'pre'
+    temp.textContent = 'X'
+    document.body.appendChild(temp)
+    const height = temp.offsetHeight
+    document.body.removeChild(temp)
+
+    return height || 21
+  }, [])
+
+  const ensureEditorMetrics = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return null
+
+    const width = textarea.clientWidth
+    const cached = editorMetricsRef.current
+    if (cached && cached.content === content && cached.width === width) return cached
+
+    let mirror = editorMirrorRef.current
+    if (!mirror) {
+      mirror = document.createElement('div')
+      mirror.setAttribute('data-editor-mirror', 'true')
+      editorMirrorRef.current = mirror
+      document.body.appendChild(mirror)
+    }
+
+    const style = window.getComputedStyle(textarea)
+    mirror.style.position = 'absolute'
+    mirror.style.top = '0'
+    mirror.style.left = '-99999px'
+    mirror.style.visibility = 'hidden'
+    mirror.style.pointerEvents = 'none'
+    mirror.style.boxSizing = 'border-box'
+    mirror.style.width = `${width}px`
+    mirror.style.fontFamily = style.fontFamily
+    mirror.style.fontSize = style.fontSize
+    mirror.style.fontWeight = style.fontWeight
+    mirror.style.fontStyle = style.fontStyle
+    mirror.style.letterSpacing = style.letterSpacing
+    mirror.style.lineHeight = style.lineHeight
+    mirror.style.paddingTop = style.paddingTop
+    mirror.style.paddingRight = style.paddingRight
+    mirror.style.paddingBottom = style.paddingBottom
+    mirror.style.paddingLeft = style.paddingLeft
+    mirror.style.border = '0'
+    mirror.style.margin = '0'
+
+    mirror.innerHTML = ''
+
+    const lines = content.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      const lineEl = document.createElement('div')
+      lineEl.style.whiteSpace = 'pre-wrap'
+      lineEl.style.wordBreak = 'break-word'
+      lineEl.style.overflowWrap = 'anywhere'
+      lineEl.style.margin = '0'
+      lineEl.textContent = lines[i] === '' ? '\u200b' : lines[i]
+      mirror.appendChild(lineEl)
+    }
+
+    const paddingTop = parseFloat(style.paddingTop) || 0
+    const children = Array.from(mirror.children) as HTMLElement[]
+    const lineTops = children.map(el => el.offsetTop - paddingTop)
+    const lineHeights = children.map(el => el.offsetHeight)
+
+    const metrics = { content, width, lineTops, lineHeights }
+    editorMetricsRef.current = metrics
+    return metrics
+  }, [content])
+
+  const getEditorTopLine = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return { line: 1, progress: 0, lineFloat: 1 }
+
+    const metrics = ensureEditorMetrics()
+    if (!metrics || metrics.lineTops.length === 0) {
+      const lineHeight = getLineHeight()
+      const lineFloat = 1 + textarea.scrollTop / lineHeight
+      const line = Math.max(1, Math.floor(lineFloat))
+      return { line, progress: lineFloat - line, lineFloat }
+    }
+
+    const y = textarea.scrollTop
+    const { lineTops, lineHeights } = metrics
+
+    let lo = 0
+    let hi = lineTops.length - 1
+    let idx = 0
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      if (lineTops[mid] <= y) {
+        idx = mid
+        lo = mid + 1
+      } else {
+        hi = mid - 1
+      }
+    }
+
+    const top = lineTops[idx]
+    const height = Math.max(1, lineHeights[idx] || 1)
+    const progress = Math.min(1, Math.max(0, (y - top) / height))
+    const line = idx + 1
+    const lineFloat = line + progress
+    return { line, progress, lineFloat }
+  }, [ensureEditorMetrics, getLineHeight])
+
+  const lineFloatToEditorScrollTop = useCallback((lineFloat: number) => {
+    const textarea = textareaRef.current
+    if (!textarea) return 0
+
+    const metrics = ensureEditorMetrics()
+    if (!metrics || metrics.lineTops.length === 0) {
+      const lineHeight = getLineHeight()
+      return Math.max(0, (lineFloat - 1) * lineHeight)
+    }
+
+    const { lineTops, lineHeights } = metrics
+    const clamped = Math.min(Math.max(1, lineFloat), lineTops.length + 1)
+    const baseLine = Math.min(lineTops.length, Math.max(1, Math.floor(clamped)))
+    const frac = clamped - baseLine
+    const idx = baseLine - 1
+
+    return Math.max(0, lineTops[idx] + frac * Math.max(1, lineHeights[idx] || 1))
+  }, [ensureEditorMetrics, getLineHeight])
+
+  // Editor scroll -> Preview scroll
+  const handleEditorScroll = useCallback(() => {
+    if (viewMode !== 'split' || isScrollSyncing.current) return
+
+    const textarea = textareaRef.current
+    const preview = previewRef.current
+    if (!textarea || !preview) return
+
+    // Clear any pending scroll sync
+    if (scrollSyncTimeoutRef.current) {
+      clearTimeout(scrollSyncTimeoutRef.current)
+    }
+
+    isScrollSyncing.current = true
+
+    const ranges = getPreviewBlockRanges()
+
+    if (ranges.length === 0) {
+      // Fallback: simple percentage scroll
+      const ratio = textarea.scrollTop / Math.max(1, textarea.scrollHeight - textarea.clientHeight)
+      preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight)
+    } else {
+      const { progress, lineFloat } = getEditorTopLine()
+
+      let before = ranges[0]
+      let after = ranges[ranges.length - 1]
+
+      for (let i = 0; i < ranges.length; i++) {
+        if (ranges[i].startLine <= lineFloat) before = ranges[i]
+        if (ranges[i].startLine >= lineFloat) {
+          after = ranges[i]
+          break
+        }
+      }
+
+      const last = ranges[ranges.length - 1]
+      let targetScroll = 0
+
+      if (lineFloat >= last.endLine) {
+        targetScroll = preview.scrollHeight - preview.clientHeight
+      } else if (before.startLine <= lineFloat && lineFloat <= before.endLine) {
+        const lineRange = before.endLine - before.startLine
+        const height = Math.max(1, before.bottom - before.top)
+        const within = lineRange > 0 ? (lineFloat - before.startLine) / lineRange : progress
+        targetScroll = before.top + Math.min(1, Math.max(0, within)) * height
+      } else if (before === after) {
+        targetScroll = before.top
+      } else {
+        const gapLines = Math.max(1, after.startLine - before.endLine)
+        const gapPixels = after.top - before.bottom
+        const within = (lineFloat - before.endLine) / gapLines
+        targetScroll = before.bottom + within * gapPixels
+      }
+
+      preview.scrollTop = Math.max(0, targetScroll)
+    }
+
+    scrollSyncTimeoutRef.current = setTimeout(() => {
+      isScrollSyncing.current = false
+    }, 16)
+  }, [viewMode, getEditorTopLine, getPreviewBlockRanges])
+
+  // Preview scroll -> Editor scroll
+  const handlePreviewScroll = useCallback(() => {
+    if (viewMode !== 'split' || isScrollSyncing.current) return
+
+    const textarea = textareaRef.current
+    const preview = previewRef.current
+    if (!textarea || !preview) return
+
+    if (scrollSyncTimeoutRef.current) {
+      clearTimeout(scrollSyncTimeoutRef.current)
+    }
+
+    isScrollSyncing.current = true
+
+    const ranges = getPreviewBlockRanges()
+
+    if (ranges.length === 0) {
+      // Fallback: simple percentage scroll
+      const ratio = preview.scrollTop / Math.max(1, preview.scrollHeight - preview.clientHeight)
+      textarea.scrollTop = ratio * (textarea.scrollHeight - textarea.clientHeight)
+    } else {
+      const scrollTop = preview.scrollTop
+
+      const byTop = [...ranges].sort((a, b) => a.top - b.top)
+      let before = byTop[0]
+      let after = byTop[byTop.length - 1]
+
+      for (let i = 0; i < byTop.length; i++) {
+        const r = byTop[i]
+        if (r.top <= scrollTop) before = r
+        if (r.bottom >= scrollTop) {
+          after = r
+          break
+        }
+      }
+
+      const last = byTop[byTop.length - 1]
+      let targetLineFloat = 1
+
+      if (scrollTop >= last.bottom) {
+        targetLineFloat = last.endLine
+      } else if (before.top <= scrollTop && scrollTop <= before.bottom) {
+        const height = Math.max(1, before.bottom - before.top)
+        const within = (scrollTop - before.top) / height
+        const lineRange = before.endLine - before.startLine
+        targetLineFloat = before.startLine + within * (lineRange > 0 ? lineRange : 1)
+      } else if (before === after) {
+        targetLineFloat = scrollTop < before.top ? before.startLine : before.endLine
+      } else {
+        const gapPixels = Math.max(1, after.top - before.bottom)
+        const gapLines = Math.max(1, after.startLine - before.endLine)
+        const within = (scrollTop - before.bottom) / gapPixels
+        targetLineFloat = before.endLine + within * gapLines
+      }
+
+      textarea.scrollTop = lineFloatToEditorScrollTop(targetLineFloat)
+    }
+
+    scrollSyncTimeoutRef.current = setTimeout(() => {
+      isScrollSyncing.current = false
+    }, 16)
+  }, [viewMode, getPreviewBlockRanges, lineFloatToEditorScrollTop])
 
   // Handle paste event for images
   const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -588,6 +920,7 @@ export function NotePage() {
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={handleTextareaKeyDown}
               onPaste={handlePaste}
+              onScroll={handleEditorScroll}
               className="w-full flex-1 min-h-[400px] bg-bg-surface border border-border rounded-lg p-4
                        text-text-primary font-mono text-sm resize-none
                        focus:outline-none focus:border-border-focus"
@@ -598,7 +931,11 @@ export function NotePage() {
         )}
         {viewMode !== 'edit' && (
           <div className={cn('flex-1 min-w-0 flex flex-col', viewMode === 'split' && 'max-w-[50%]')}>
-            <div className="flex-1 min-h-[400px] bg-bg-surface border border-border rounded-lg p-4 overflow-auto">
+            <div
+              ref={previewRef}
+              onScroll={handlePreviewScroll}
+              className="flex-1 min-h-[400px] bg-bg-surface border border-border rounded-lg p-4 overflow-auto"
+            >
               {content ? (
                 <MarkdownPreview content={content} />
               ) : (

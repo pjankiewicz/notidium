@@ -5,9 +5,16 @@ import { cn } from '@/utils/cn'
 interface CodeBlockProps {
   children: React.ReactNode
   className?: string
+  'data-source-line'?: number
+  'data-source-end-line'?: number
 }
 
-export function CodeBlock({ children, className }: CodeBlockProps) {
+export function CodeBlock({
+  children,
+  className,
+  'data-source-line': sourceLine,
+  'data-source-end-line': sourceEndLine,
+}: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
   const preRef = useRef<HTMLPreElement>(null)
 
@@ -28,7 +35,7 @@ export function CodeBlock({ children, className }: CodeBlockProps) {
   }
 
   return (
-    <div className="relative group">
+    <div className="relative group" data-source-line={sourceLine} data-source-end-line={sourceEndLine}>
       <pre
         ref={preRef}
         className={cn(
