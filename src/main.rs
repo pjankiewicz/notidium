@@ -393,12 +393,32 @@ async fn initialize_state(config: &Config) -> anyhow::Result<AppState> {
     // Initialize semantic search
     let mut semantic = SemanticSearch::new(embedder.clone());
 
-    // Load chunks if available
+    // Load chunks if available, filtering out stale chunks whose notes no longer exist
     let chunks_path = config.data_dir().join("chunks.json");
     if chunks_path.exists() {
         let content = std::fs::read_to_string(&chunks_path)?;
-        let chunks = serde_json::from_str(&content)?;
-        semantic.load_chunks(chunks);
+        let chunks: Vec<notidium::types::Chunk> = serde_json::from_str(&content)?;
+        let total_chunks = chunks.len();
+
+        // Get valid note IDs from the store
+        let valid_note_ids: std::collections::HashSet<uuid::Uuid> =
+            notes.iter().map(|n| n.id).collect();
+
+        // Filter chunks to only include those with valid note IDs
+        let valid_chunks: Vec<_> = chunks
+            .into_iter()
+            .filter(|c| valid_note_ids.contains(&c.note_id))
+            .collect();
+
+        let stale_count = total_chunks - valid_chunks.len();
+        if stale_count > 0 {
+            tracing::warn!(
+                "Filtered out {} stale chunks (notes no longer exist). Run `notidium index -f` to rebuild.",
+                stale_count
+            );
+        }
+
+        semantic.load_chunks(valid_chunks);
         tracing::info!("Loaded {} chunks for semantic search", semantic.chunk_count());
     }
 
