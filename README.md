@@ -4,6 +4,8 @@
 
 A developer-focused, local-first note-taking application with semantic search and native MCP integration.
 
+![Notidium Screenshot](images/screenshot.png)
+
 ## Philosophy
 
 - **Context is everything** — Code without context is just syntax. Notidium preserves the *why*, not just the *what*.
@@ -23,12 +25,12 @@ A developer-focused, local-first note-taking application with semantic search an
 ## Installation
 
 ```bash
-# Clone and build
+# Install from crates.io
+cargo install notidium
+
+# Or build from source
 git clone https://github.com/pjankiewicz/notidium
 cd notidium
-cargo build --release
-
-# Or install directly
 cargo install --path .
 ```
 

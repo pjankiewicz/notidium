@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 description = "Developer-focused, local-first note-taking with semantic search and MCP integration"
 license = "MIT"
+repository = "https://github.com/pjankiewicz/notidium"
+homepage = "https://github.com/pjankiewicz/notidium"
+readme = "README.md"
+keywords = ["notes", "semantic-search", "mcp", "knowledge-base", "markdown"]
+categories = ["command-line-utilities", "text-processing"]
 
 [dependencies]
 # Web framework
