@@ -74,6 +74,16 @@ notidium mcp
 
 Notidium includes a built-in MCP server that exposes your knowledge base to AI assistants like Claude.
 
+### Claude Code CLI
+
+```bash
+# Start notidium server first
+notidium serve
+
+# Add MCP server to Claude Code
+claude mcp add --transport http notidium http://localhost:3939/mcp
+```
+
 ### Claude Desktop Setup
 
 Add to your `claude_desktop_config.json`:
