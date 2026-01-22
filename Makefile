@@ -4,7 +4,7 @@ FRONTEND_DIR := frontend
 NPM := npm
 CARGO := cargo
 
-.PHONY: help dev dev-release backend frontend setup build build-frontend clean generate-sdk install
+.PHONY: help dev dev-release backend frontend setup build build-frontend clean generate-sdk install bump-patch bump-minor bump-major publish
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -70,3 +70,47 @@ setup: ## Initial setup for new developers
 	@echo ""
 	@echo "Setup complete! Run 'make dev' to start development servers."
 	@echo "Run 'make generate-sdk' (with backend running) to generate the API client."
+
+# Version bumping
+bump-patch: ## Bump patch version (0.1.0 -> 0.1.1)
+	@VERSION=$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/'); \
+	MAJOR=$$(echo $$VERSION | cut -d. -f1); \
+	MINOR=$$(echo $$VERSION | cut -d. -f2); \
+	PATCH=$$(echo $$VERSION | cut -d. -f3); \
+	NEW_PATCH=$$((PATCH + 1)); \
+	NEW_VERSION="$$MAJOR.$$MINOR.$$NEW_PATCH"; \
+	sed -i '' "s/^version = \"$$VERSION\"/version = \"$$NEW_VERSION\"/" Cargo.toml; \
+	echo "Bumped version: $$VERSION -> $$NEW_VERSION"
+
+bump-minor: ## Bump minor version (0.1.0 -> 0.2.0)
+	@VERSION=$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/'); \
+	MAJOR=$$(echo $$VERSION | cut -d. -f1); \
+	MINOR=$$(echo $$VERSION | cut -d. -f2); \
+	NEW_MINOR=$$((MINOR + 1)); \
+	NEW_VERSION="$$MAJOR.$$NEW_MINOR.0"; \
+	sed -i '' "s/^version = \"$$VERSION\"/version = \"$$NEW_VERSION\"/" Cargo.toml; \
+	echo "Bumped version: $$VERSION -> $$NEW_VERSION"
+
+bump-major: ## Bump major version (0.1.0 -> 1.0.0)
+	@VERSION=$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/'); \
+	MAJOR=$$(echo $$VERSION | cut -d. -f1); \
+	NEW_MAJOR=$$((MAJOR + 1)); \
+	NEW_VERSION="$$NEW_MAJOR.0.0"; \
+	sed -i '' "s/^version = \"$$VERSION\"/version = \"$$NEW_VERSION\"/" Cargo.toml; \
+	echo "Bumped version: $$VERSION -> $$NEW_VERSION"
+
+# Publishing
+publish: build-frontend ## Build and publish to crates.io
+	@echo "Building frontend..."
+	@echo "Checking package..."
+	$(CARGO) package --list
+	@echo ""
+	@read -p "Ready to publish to crates.io. Continue? [y/N] " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		$(CARGO) publish; \
+		git add -A && git commit -m "Release v$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"; \
+		git push; \
+		echo "✓ Published to crates.io!"; \
+	else \
+		echo "Cancelled."; \
+	fi
