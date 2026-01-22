@@ -24,7 +24,7 @@ A developer-focused, local-first note-taking application with semantic search an
 
 ```bash
 # Clone and build
-git clone https://github.com/zenide/notidium
+git clone https://github.com/pjankiewicz/notidium
 cd notidium
 cargo build --release
 
@@ -221,9 +221,13 @@ cargo test
 cargo build --release
 ```
 
+## Contributing
+
+Contributions are welcome. Please open an issue first to discuss what you would like to change.
+
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ---
 
