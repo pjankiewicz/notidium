@@ -37,3 +37,4 @@ coverage/
 
 # Local development
 .claude/
+.idea/
