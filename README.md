@@ -1,6 +1,4 @@
-# Notidium
-
-![Logo](images/logo.png)
+![Notidium Logo](images/logo.png)
 
 [![Crates.io](https://img.shields.io/crates/v/notidium.svg)](https://crates.io/crates/notidium)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
