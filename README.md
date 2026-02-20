@@ -1,4 +1,4 @@
-![Notidium Logo](images/logo.png)
+![Notidium fLogo](images/logo.png)
 
 [![Crates.io](https://img.shields.io/crates/v/notidium.svg)](https://crates.io/crates/notidium)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -235,12 +235,6 @@ cargo test
 # Build release
 cargo build --release
 ```
-
-## Inspiration
-
-- [Crux](https://github.com/redbadger/crux/) — Cross-platform app development in Rust
-- [Elm](https://elm-lang.org/) — Functional language for reliable web apps
-- [Zen Coding](https://pjankiewicz.github.io/blog/posts/zen-coding/) — Philosophy of focused, distraction-free development
 
 ## Contributing
 

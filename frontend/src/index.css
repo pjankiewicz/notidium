@@ -149,6 +149,18 @@
   padding: 0 !important;
 }
 
+/* Ensure code inside pre blocks is always block-level with no extra padding.
+   Fixes first-line shift when rehype-highlight doesn't detect a language
+   and the inline code renderer styles (px-1.5) leak into code blocks. */
+pre code {
+  display: block !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  font-size: inherit !important;
+  color: inherit !important;
+}
+
 /* Light mode specific highlight.js overrides */
 :root .hljs-comment,
 :root .hljs-quote {
