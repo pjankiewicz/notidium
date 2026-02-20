@@ -134,16 +134,48 @@ impl NoteStore {
 
         let content_hash = compute_hash(&content);
 
-        // Get or create stable ID from manifest
-        let id = {
+        // Get or create stable ID and retrieve persisted timestamps from manifest
+        let (id, persisted_created_at, persisted_updated_at) = {
             let mut manifest = self.manifest.write().await;
-            manifest.get_or_create_id(&relative_path, &content_hash)
+            let id = manifest.get_or_create_id(&relative_path, &content_hash);
+            let entry = manifest.get_entry(&relative_path);
+            let created_at = entry.and_then(|e| e.created_at);
+            let updated_at = entry.and_then(|e| e.updated_at);
+            (id, created_at, updated_at)
         };
 
         let mut note = Note::new(title, content.clone(), relative_path);
         note.id = id;
         note.content_hash = content_hash;
         note.frontmatter = frontmatter;
+
+        // Restore timestamps from manifest, falling back to file modification time
+        let file_mtime = std::fs::metadata(path)
+            .and_then(|m| m.modified())
+            .ok()
+            .map(chrono::DateTime::<chrono::Utc>::from);
+
+        note.created_at = persisted_created_at
+            .or(file_mtime)
+            .unwrap_or(note.created_at);
+        note.updated_at = persisted_updated_at
+            .or(file_mtime)
+            .unwrap_or(note.updated_at);
+
+        // Backfill timestamps into manifest if they were missing (migration)
+        if persisted_created_at.is_none() || persisted_updated_at.is_none() {
+            let mut manifest = self.manifest.write().await;
+            if persisted_created_at.is_none() {
+                if let Some(entry) = manifest.get_entry_mut(&note.file_path) {
+                    entry.created_at = Some(note.created_at);
+                }
+            }
+            if persisted_updated_at.is_none() {
+                if let Some(entry) = manifest.get_entry_mut(&note.file_path) {
+                    entry.updated_at = Some(note.updated_at);
+                }
+            }
+        }
 
         Ok(note)
     }
@@ -270,10 +302,11 @@ impl NoteStore {
         note.updated_at = chrono::Utc::now();
         note.content_hash = compute_hash(&content);
 
-        // Update manifest hash
+        // Update manifest hash and timestamps
         {
             let mut manifest = self.manifest.write().await;
             manifest.update_hash(&note.file_path, &note.content_hash);
+            manifest.update_timestamps(&note.file_path, note.updated_at);
         }
 
         // Write to disk
@@ -365,10 +398,11 @@ impl NoteStore {
         note.updated_at = chrono::Utc::now();
         note.content_hash = compute_hash(&new_file_content);
 
-        // Update manifest hash
+        // Update manifest hash and timestamps
         {
             let mut manifest = self.manifest.write().await;
             manifest.update_hash(&note.file_path, &note.content_hash);
+            manifest.update_timestamps(&note.file_path, note.updated_at);
         }
 
         // Write to disk

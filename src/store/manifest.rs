@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -17,7 +18,13 @@ pub struct ManifestEntry {
     /// SHA-256 hash of file content (for change detection)
     pub content_hash: String,
     /// Last indexed timestamp
-    pub indexed_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub indexed_at: Option<DateTime<Utc>>,
+    /// When the note was first seen
+    #[serde(default)]
+    pub created_at: Option<DateTime<Utc>>,
+    /// When the note content was last modified
+    #[serde(default)]
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 /// Internal manifest tracking note paths to IDs and hashes
@@ -57,12 +64,36 @@ impl Manifest {
             entry.id
         } else {
             let id = Uuid::new_v4();
+            let now = Utc::now();
             self.entries.insert(path.to_path_buf(), ManifestEntry {
                 id,
                 content_hash: content_hash.to_string(),
                 indexed_at: None,
+                created_at: Some(now),
+                updated_at: Some(now),
             });
             id
+        }
+    }
+
+    /// Get the entry for a note path
+    pub fn get_entry(&self, path: &Path) -> Option<&ManifestEntry> {
+        self.entries.get(path)
+    }
+
+    /// Get mutable entry for a note path
+    pub fn get_entry_mut(&mut self, path: &Path) -> Option<&mut ManifestEntry> {
+        self.entries.get_mut(path)
+    }
+
+    /// Update timestamps when note content changes
+    pub fn update_timestamps(&mut self, path: &Path, updated_at: DateTime<Utc>) {
+        if let Some(entry) = self.entries.get_mut(path) {
+            entry.updated_at = Some(updated_at);
+            // Ensure created_at is set (migration for old entries)
+            if entry.created_at.is_none() {
+                entry.created_at = Some(updated_at);
+            }
         }
     }
 
@@ -89,7 +120,7 @@ impl Manifest {
     /// Mark a note as indexed
     pub fn mark_indexed(&mut self, path: &Path) {
         if let Some(entry) = self.entries.get_mut(path) {
-            entry.indexed_at = Some(chrono::Utc::now());
+            entry.indexed_at = Some(Utc::now());
         }
     }
 

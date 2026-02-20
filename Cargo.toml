@@ -1,6 +1,6 @@
 [package]
 name = "notidium"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Developer-focused, local-first note-taking with semantic search and MCP integration"
 license = "MIT"
