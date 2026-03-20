@@ -56,6 +56,7 @@ export function NotePage() {
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const isScrollSyncing = useRef(false)
@@ -100,6 +101,7 @@ export function NotePage() {
       setIsPinned(false)
       setIsArchived(false)
       initializedNoteId.current = null
+      requestAnimationFrame(() => titleInputRef.current?.focus())
     }
   }, [isNewNote])
 
@@ -898,6 +900,7 @@ export function NotePage() {
 
       {/* Title */}
       <input
+        ref={titleInputRef}
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
