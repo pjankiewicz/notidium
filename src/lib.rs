@@ -9,6 +9,7 @@ pub mod search;
 pub mod embed;
 pub mod mcp;
 pub mod api;
+pub mod service;
 
 pub use config::Config;
 pub use error::{Error, Result};

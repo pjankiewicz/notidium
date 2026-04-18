@@ -46,6 +46,9 @@ pub enum Error {
     #[error("MCP error: {0}")]
     Mcp(String),
 
+    #[error("Service error: {0}")]
+    Service(String),
+
     #[error("{0}")]
     Other(String),
 }

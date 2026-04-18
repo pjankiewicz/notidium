@@ -4,7 +4,7 @@ FRONTEND_DIR := frontend
 NPM := npm
 CARGO := cargo
 
-.PHONY: help dev dev-release backend frontend setup build build-frontend clean generate-sdk install bump-patch bump-minor bump-major publish
+.PHONY: help dev dev-release backend frontend setup build build-frontend clean generate-sdk install bump-patch bump-minor bump-major publish release
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -98,6 +98,16 @@ bump-major: ## Bump major version (0.1.0 -> 1.0.0)
 	NEW_VERSION="$$NEW_MAJOR.0.0"; \
 	sed -i '' "s/^version = \"$$VERSION\"/version = \"$$NEW_VERSION\"/" Cargo.toml; \
 	echo "Bumped version: $$VERSION -> $$NEW_VERSION"
+
+release: ## Tag current version and trigger GitHub Actions release build
+	@VERSION=$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/'); \
+	TAG="v$$VERSION"; \
+	if git rev-parse "$$TAG" >/dev/null 2>&1; then \
+		echo "Tag $$TAG already exists. Bump version first (make bump-patch/minor/major)."; exit 1; \
+	fi; \
+	git tag -a "$$TAG" -m "Release $$TAG"; \
+	git push origin "$$TAG"; \
+	echo "✓ Pushed $$TAG — GitHub Actions will build and publish release binaries."
 
 # Publishing
 publish: build-frontend ## Build and publish to crates.io

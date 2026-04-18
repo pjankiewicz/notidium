@@ -27,14 +27,38 @@ A developer-focused, local-first note-taking application with semantic search an
 
 ## Installation
 
-```bash
-# Install from crates.io
-cargo install notidium
+### One-liner (recommended)
 
-# Or build from source
-git clone https://github.com/pjankiewicz/notidium
-cd notidium
-cargo install --path .
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/pjankiewicz/notidium/main/install.sh | sh
+```
+
+**Windows (PowerShell):**
+```powershell
+iwr -useb https://raw.githubusercontent.com/pjankiewicz/notidium/main/install.ps1 | iex
+```
+
+The installer downloads a prebuilt binary into `~/.notidium/bin`, asks for a
+vault path, offers to set up an auto-start service so the server runs at
+login, and patches your shell's PATH. No sudo or admin is required.
+
+### Alternative: from source
+
+```bash
+cargo install notidium                                                # crates.io
+# or
+git clone https://github.com/pjankiewicz/notidium && cd notidium && make install
+```
+
+### Auto-start service (manual)
+
+If you skipped the service prompt during install, you can enable it later:
+
+```bash
+notidium install-service            # installs launchd / systemd / Task Scheduler entry
+notidium service status             # check running state, tail recent logs
+notidium uninstall-service          # remove it
 ```
 
 ## Quick Start

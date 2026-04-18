@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            archive: tar.gz
+          - target: x86_64-apple-darwin
+            runner: macos-13
+            archive: tar.gz
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            archive: tar.gz
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            archive: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend (embedded via rust-embed)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }} --bin notidium
+
+      - name: Package (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="notidium-${VERSION}-${{ matrix.target }}"
+          mkdir -p "dist/${STAGE}"
+          cp "target/${{ matrix.target }}/release/notidium" "dist/${STAGE}/"
+          cp LICENSE README.md "dist/${STAGE}/"
+          cd dist
+          tar -czf "${STAGE}.tar.gz" "${STAGE}"
+          shasum -a 256 "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256"
+
+      - name: Package (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $version = "${env:GITHUB_REF_NAME}".TrimStart("v")
+          $stage = "notidium-$version-${{ matrix.target }}"
+          New-Item -ItemType Directory -Force -Path "dist/$stage" | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/notidium.exe" "dist/$stage/"
+          Copy-Item LICENSE,README.md "dist/$stage/"
+          Compress-Archive -Path "dist/$stage" -DestinationPath "dist/$stage.zip"
+          $hash = (Get-FileHash -Algorithm SHA256 "dist/$stage.zip").Hash.ToLower()
+          "$hash  $stage.zip" | Out-File -Encoding ascii "dist/$stage.zip.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: notidium-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect archives and build SHA256SUMS
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.tar.gz' -o -name '*.zip' \) -exec cp {} release/ \;
+          cd release
+          sha256sum *.tar.gz *.zip 2>/dev/null | sort > SHA256SUMS
+          cat SHA256SUMS
+          ls -la
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.tar.gz
+            release/*.zip
+            release/SHA256SUMS
+          generate_release_notes: true
+          draft: false
+          prerelease: false

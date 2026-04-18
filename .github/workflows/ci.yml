@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  backend:
+    name: Backend (cargo test + clippy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Node (for embedded frontend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend (required for rust-embed)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: cargo build
+        run: cargo build --all-targets
+
+      - name: cargo test
+        run: cargo test --all-targets
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  frontend:
+    name: Frontend (lint + type-check + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript type-check
+        run: npm run type-check
+
+      - name: Build
+        run: npm run build
+
+  installer-lint:
+    name: Installer scripts (shellcheck + PSScriptAnalyzer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck install.sh
+        run: |
+          if [ -f install.sh ]; then
+            sudo apt-get update && sudo apt-get install -y shellcheck
+            shellcheck install.sh
+          else
+            echo "install.sh not present yet, skipping"
+          fi
+
+      - name: PSScriptAnalyzer install.ps1
+        shell: pwsh
+        run: |
+          if (Test-Path install.ps1) {
+            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+            $results = Invoke-ScriptAnalyzer -Path install.ps1 -Severity Error,Warning
+            if ($results) {
+              $results | Format-Table
+              exit 1
+            }
+          } else {
+            Write-Host "install.ps1 not present yet, skipping"
+          }

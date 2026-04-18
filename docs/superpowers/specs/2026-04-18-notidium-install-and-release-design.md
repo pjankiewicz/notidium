@@ -150,14 +150,14 @@ Matrix of 5 build targets:
 | --- | --- | --- |
 | `aarch64-apple-darwin` | `macos-14` | Native Apple Silicon runner |
 | `x86_64-apple-darwin` | `macos-13` | Intel macOS |
-| `x86_64-unknown-linux-musl` | `ubuntu-latest` | Built via `cross` for static linking |
-| `aarch64-unknown-linux-musl` | `ubuntu-latest` | Built via `cross` |
+| `x86_64-unknown-linux-gnu` | `ubuntu-latest` | Native glibc build |
+| `aarch64-unknown-linux-gnu` | `ubuntu-24.04-arm` | Native ARM runner, no cross-compile |
 | `x86_64-pc-windows-msvc` | `windows-latest` | `.zip` output |
 
 Per-target job:
 1. Checkout.
 2. Setup Node, `cd frontend && npm ci && npm run build`. The frontend must be built before `cargo build` because `rust-embed` embeds it into the binary.
-3. Setup Rust + `rustup target add <target>` (or install `cross`).
+3. Setup Rust + `rustup target add <target>`. Each matrix entry runs on a host that matches the target architecture, so no cross-compilation is needed.
 4. `cargo build --release --target <target>`.
 5. Package: `notidium-<target>.tar.gz` on POSIX, `notidium-<target>.zip` on Windows. Archive contains the binary, `LICENSE`, and `README.md`.
 6. Compute SHA-256, upload archive + sum file as release artifacts.

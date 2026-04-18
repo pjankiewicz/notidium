@@ -12,6 +12,7 @@ use notidium::config::Config;
 use notidium::embed::{Chunker, Embedder};
 use notidium::mcp::NotidiumServer;
 use notidium::search::{FullTextIndex, SemanticSearch};
+use notidium::service::{self, ServiceSpec, ServiceState};
 use notidium::store::NoteStore;
 
 #[derive(Parser)]
@@ -102,6 +103,31 @@ enum Commands {
         /// Filter by tag
         #[arg(short, long)]
         tag: Option<String>,
+    },
+
+    /// Install the auto-start service (runs notidium serve at login)
+    InstallService {
+        /// Vault path (defaults to configured vault)
+        #[arg(long)]
+        vault: Option<PathBuf>,
+
+        /// Port (defaults to configured HTTP port)
+        #[arg(short, long)]
+        port: Option<u16>,
+
+        /// Overwrite an existing service definition
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Remove the auto-start service
+    UninstallService,
+
+    /// Show the auto-start service state (running/stopped) and recent log lines
+    ServiceStatus {
+        /// Number of log lines to tail
+        #[arg(short = 'n', long, default_value = "20")]
+        lines: usize,
     },
 }
 
@@ -361,6 +387,74 @@ async fn main() -> anyhow::Result<()> {
                         note.updated_at.format("%Y-%m-%d"),
                         tag_str
                     );
+                }
+            }
+        }
+
+        Commands::InstallService { vault, port, force } => {
+            let mut cfg = config;
+            if let Some(v) = vault {
+                cfg = Config::load_from_vault(v)?;
+            } else if let Some(v) = &cli.vault {
+                cfg = Config::load_from_vault(v.clone())?;
+            }
+
+            // A directory is considered an initialized vault when it has a
+            // `.notidium/` subdirectory. If so, reuse it as-is (never touch
+            // the user's data). Otherwise run init to create the layout.
+            if cfg.data_dir().exists() {
+                println!("✓ Using existing vault at {}", cfg.vault_path.display());
+            } else {
+                cfg.init_vault()?;
+                cfg.save()?;
+                println!("✓ Initialized vault at {}", cfg.vault_path.display());
+            }
+
+            let spec = ServiceSpec {
+                binary_path: std::env::current_exe()?,
+                vault_path: cfg.vault_path.clone(),
+                port: port.unwrap_or(cfg.http_port),
+                log_path: cfg.logs_path().join("server.log"),
+            };
+
+            service::current().install(&spec, force)?;
+            println!("✓ Service installed");
+            println!("  Binary: {}", spec.binary_path.display());
+            println!("  Vault:  {}", spec.vault_path.display());
+            println!("  Port:   {}", spec.port);
+            println!("  Logs:   {}", spec.log_path.display());
+        }
+
+        Commands::UninstallService => {
+            service::current().uninstall()?;
+            println!("✓ Service removed");
+        }
+
+        Commands::ServiceStatus { lines } => {
+            let state = service::current().status()?;
+            let label = match &state {
+                ServiceState::NotInstalled => "not installed",
+                ServiceState::Stopped => "stopped",
+                ServiceState::Running => "running",
+                ServiceState::Failed(_) => "failed",
+                ServiceState::Unknown => "unknown",
+            };
+            println!("Status: {label}");
+            if let ServiceState::Failed(msg) = &state {
+                println!("  {msg}");
+            }
+
+            if !matches!(state, ServiceState::NotInstalled) {
+                let log_path = config.logs_path().join("server.log");
+                if log_path.exists() {
+                    println!("\nLast {lines} lines of {}:", log_path.display());
+                    let content = std::fs::read_to_string(&log_path).unwrap_or_default();
+                    let tail: Vec<&str> = content.lines().rev().take(lines).collect();
+                    for line in tail.into_iter().rev() {
+                        println!("  {line}");
+                    }
+                } else {
+                    println!("\nNo log file at {} yet.", log_path.display());
                 }
             }
         }
