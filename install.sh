@@ -158,9 +158,11 @@ else
     VAULT="$(read_tty "Vault path" "${HOME}/Notidium")"
 fi
 
-# Expand leading ~ so downstream tools get an absolute path.
+# Expand leading ~ so downstream tools get an absolute path. The patterns use
+# backslash-escaped `~` so shellcheck sees them as literal characters rather
+# than flagging SC2088 about tilde-in-quotes.
 case "$VAULT" in
-    "~"|"~/"*) VAULT="${HOME}${VAULT#~}" ;;
+    \~|\~/*) VAULT="${HOME}${VAULT#\~}" ;;
 esac
 
 if [ -n "${NOTIDIUM_INSTALL_SERVICE:-}" ]; then
@@ -197,6 +199,9 @@ patch_rc() {
     fi
     {
         printf '\n# Added by notidium installer\n'
+        # The $HOME and $PATH references are intentionally literal — they get
+        # expanded by the *user's* shell at startup, not by this installer.
+        # shellcheck disable=SC2016
         printf 'export PATH="$HOME/.notidium/bin:$PATH"\n'
     } >> "$rc"
     info "Updated PATH in $rc"
@@ -213,6 +218,8 @@ if [ -z "${NOTIDIUM_NO_MODIFY_PATH:-}" ]; then
                 if ! grep -Fq ".notidium/bin" "$HOME/.config/fish/config.fish"; then
                     {
                         printf '\n# Added by notidium installer\n'
+                        # $HOME/$PATH expand in the fish shell at startup.
+                        # shellcheck disable=SC2016
                         printf 'set -gx PATH $HOME/.notidium/bin $PATH\n'
                     } >> "$HOME/.config/fish/config.fish"
                     info "Updated PATH in ~/.config/fish/config.fish"
@@ -235,5 +242,9 @@ fi
 
 case ":$PATH:" in
     *":${INSTALL_DIR}:"*) ;;
-    *) printf '\nRestart your shell or run: export PATH="%s:$PATH"\n' "$INSTALL_DIR" ;;
+    *)
+        # $PATH is intentionally literal for the user to paste into their shell.
+        # shellcheck disable=SC2016
+        printf '\nRestart your shell or run: export PATH="%s:$PATH"\n' "$INSTALL_DIR"
+        ;;
 esac
