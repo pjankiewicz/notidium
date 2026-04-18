@@ -231,7 +231,7 @@ impl NoteStore {
             .collect();
 
         // Sort by updated_at descending
-        notes.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        notes.sort_by_key(|n| std::cmp::Reverse(n.updated_at));
 
         notes.into_iter().skip(offset).take(limit).collect()
     }
