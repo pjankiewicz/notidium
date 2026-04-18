@@ -15,6 +15,16 @@
 #   NOTIDIUM_VERSION           Pin to a specific release tag (default: latest).
 #   NOTIDIUM_REPO              owner/repo to download from (default: pjankiewicz/notidium).
 
+# Write-Host is intentional: this is an interactive installer whose whole job
+# is to print colored progress to the user's terminal. Write-Output/Verbose
+# wouldn't give colored, unpiped output — so suppress PSAvoidUsingWriteHost
+# at the file level.
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSAvoidUsingWriteHost', '',
+    Justification = 'Interactive installer requires colored terminal output.'
+)]
+param()
+
 $ErrorActionPreference = 'Stop'
 
 function Write-Info($msg) {

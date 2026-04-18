@@ -21,6 +21,11 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Install protoc (lance-encoding build dep)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Cache cargo registry and target
         uses: Swatinem/rust-cache@v2
 
