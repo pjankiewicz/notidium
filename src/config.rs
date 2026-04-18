@@ -119,9 +119,10 @@ impl Config {
             config.vault_path = vault_path;
             Ok(config)
         } else {
-            let mut config = Config::default();
-            config.vault_path = vault_path;
-            Ok(config)
+            Ok(Config {
+                vault_path,
+                ..Config::default()
+            })
         }
     }
 

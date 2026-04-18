@@ -113,7 +113,7 @@ impl NoteStore {
     pub async fn load_note_from_file(&self, path: &Path) -> Result<Note> {
         let content = tokio::fs::read_to_string(path).await?;
         let relative_path = path
-            .strip_prefix(&self.config.notes_path())
+            .strip_prefix(self.config.notes_path())
             .unwrap_or(path)
             .to_path_buf();
 
@@ -555,8 +555,8 @@ fn parse_frontmatter(content: &str) -> (Option<Frontmatter>, String) {
 fn extract_title_from_content(content: &str) -> Option<String> {
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("# ") {
-            return Some(trimmed[2..].to_string());
+        if let Some(rest) = trimmed.strip_prefix("# ") {
+            return Some(rest.to_string());
         }
         if !trimmed.is_empty() && !trimmed.starts_with('#') {
             // Use first non-empty, non-heading line as title

@@ -225,7 +225,7 @@ mod tests {
         let _id1 = manifest.get_or_create_id(&path1, "h1");
         let id2 = manifest.get_or_create_id(&path2, "h2");
 
-        let deleted = manifest.prune_deleted(&[path1.clone()]);
+        let deleted = manifest.prune_deleted(std::slice::from_ref(&path1));
 
         assert_eq!(deleted.len(), 1);
         assert_eq!(deleted[0], id2);

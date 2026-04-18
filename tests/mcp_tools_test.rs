@@ -22,8 +22,10 @@ impl StoreTestFixture {
         let vault_path = temp_dir.path().to_path_buf();
 
         // Create config
-        let mut config = Config::default();
-        config.vault_path = vault_path.clone();
+        let config = Config {
+            vault_path: vault_path.clone(),
+            ..Config::default()
+        };
 
         // Initialize vault structure
         config.init_vault().expect("Failed to init vault");
@@ -1308,7 +1310,7 @@ mod fulltext_search_extended_tests {
 
         let results = fixture.fulltext.search("rust memory", 10).expect("Should search");
 
-        assert!(results.len() >= 1, "Should find at least one result");
+        assert!(!results.is_empty(), "Should find at least one result");
 
         // First result should be the more relevant one
         if results.len() >= 2 {
@@ -1483,7 +1485,7 @@ mod store_edge_case_tests {
             .expect("Should delete");
 
         // Note should be marked as deleted but still retrievable
-        let retrieved = fixture.store.get(note.id).await;
+        let _retrieved = fixture.store.get(note.id).await;
         // Implementation may vary - note might be None or marked as deleted
         // Just verify the delete operation succeeded
     }
@@ -1880,8 +1882,10 @@ mod config_tests {
     #[test]
     fn test_vault_initialization() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let mut config = Config::default();
-        config.vault_path = temp_dir.path().to_path_buf();
+        let config = Config {
+            vault_path: temp_dir.path().to_path_buf(),
+            ..Config::default()
+        };
 
         config.init_vault().expect("Should init vault");
 
@@ -1893,8 +1897,10 @@ mod config_tests {
     #[test]
     fn test_config_paths() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let mut config = Config::default();
-        config.vault_path = temp_dir.path().to_path_buf();
+        let config = Config {
+            vault_path: temp_dir.path().to_path_buf(),
+            ..Config::default()
+        };
 
         assert!(config.notes_path().ends_with("notes"));
         assert!(config.tantivy_path().ends_with("tantivy"));
@@ -2054,8 +2060,10 @@ mod mcp_server_tests {
             let temp_dir = TempDir::new().expect("Failed to create temp dir");
             let vault_path = temp_dir.path().to_path_buf();
 
-            let mut config = Config::default();
-            config.vault_path = vault_path.clone();
+            let config = Config {
+                vault_path: vault_path.clone(),
+                ..Config::default()
+            };
             config.init_vault().expect("Failed to init vault");
 
             let store = Arc::new(NoteStore::new(config.clone()));
