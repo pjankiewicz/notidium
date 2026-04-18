@@ -17,7 +17,7 @@
 
 # Write-Host is intentional: this is an interactive installer whose whole job
 # is to print colored progress to the user's terminal. Write-Output/Verbose
-# wouldn't give colored, unpiped output — so suppress PSAvoidUsingWriteHost
+# wouldn't give colored, unpiped output -- so suppress PSAvoidUsingWriteHost
 # at the file level.
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
     'PSAvoidUsingWriteHost', '',
